@@ -9,7 +9,7 @@
         rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script> <!-- Fuzzy Search -->
     <style>
-        /* General Page Styling */
+        /* General Styling */
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -145,6 +145,13 @@
 
     <!-- Filters Section -->
     <div class="filters">
+        <select id="filterYear">
+            <option value="all">Show by Year</option>
+        </select>
+        <select id="filterSurah">
+            <option value="all">Show by Surah</option>
+        </select>
+        <input type="text" id="searchSurah" placeholder="Search Surah...">
         <input type="checkbox" id="filterHadithOnly"> Show only Ayahs with Hadiths
     </div>
 
@@ -163,6 +170,9 @@
         document.addEventListener("DOMContentLoaded", function () {
             const timeline = document.getElementById("timeline");
             const eventDetails = document.getElementById("eventDetails");
+            const filterYear = document.getElementById("filterYear");
+            const filterSurah = document.getElementById("filterSurah");
+            const searchSurah = document.getElementById("searchSurah");
             const filterHadithOnly = document.getElementById("filterHadithOnly");
             let quranData = [];
             let hadithData = {};
@@ -171,15 +181,29 @@
             fetch("hadith_connections.json")
                 .then(response => response.json())
                 .then(data => {
-                    hadithData = data; // Store Hadith data
+                    hadithData = data;
                     return fetch("quran_chronological.json");
                 })
                 .then(response => response.json())
                 .then(data => {
                     quranData = data;
+                    populateFilters(quranData);
                     renderTimeline(quranData);
                 })
                 .catch(error => console.error("Error loading data:", error));
+
+            function populateFilters(data) {
+                const years = [...new Set(data.map(entry => entry.revelation_year))];
+                const surahs = [...new Set(data.map(entry => entry.surah_english))];
+
+                years.forEach(year => {
+                    filterYear.innerHTML += `<option value="${year}">${year}</option>`;
+                });
+
+                surahs.forEach(surah => {
+                    filterSurah.innerHTML += `<option value="${surah}">${surah}</option>`;
+                });
+            }
 
             function renderTimeline(filteredData) {
                 timeline.innerHTML = "";
@@ -197,11 +221,8 @@
                         setTimeout(() => {
                             eventDetails.innerHTML = `
                                 <h2>${entry.surah_english} (${entry.surah}) - Ayah ${entry.ayah}</h2>
-                                <p><strong>Year:</strong> ${entry.revelation_year}</p>
-                                <p><strong>Order:</strong> ${entry.revelation_order}</p>
                                 <p class="arabic-text">${entry.text_arabic}</p>
                                 <p>${entry.text_english}</p>
-                                <p><strong>Context:</strong> ${entry.context}</p>
                                 <h3>Related Hadiths</h3>
                                 <div id="hadithSection">${renderHadiths(entry.related_hadiths)}</div>
                             `;
@@ -215,25 +236,8 @@
 
             function renderHadiths(hadithIDs) {
                 if (!hadithIDs || hadithIDs.length === 0) return "<p><em>No related Hadiths available.</em></p>";
-
-                return hadithIDs.map(id => {
-                    const hadith = hadithData[id];
-                    return hadith ? `
-                        <div class="hadith">
-                            <p><strong>Source:</strong> ${hadith.source} (${hadith.hadith_number})</p>
-                            <p><strong>Narrator:</strong> ${hadith.narrator}</p>
-                            <p>${hadith.text}</p>
-                        </div>
-                    ` : "";
-                }).join("");
+                return hadithIDs.map(id => hadithData[id] ? `<div class="hadith"><p>${hadithData[id].text}</p></div>` : "").join("");
             }
-
-            filterHadithOnly.addEventListener("change", () => {
-                const filteredData = filterHadithOnly.checked
-                    ? quranData.filter(entry => entry.related_hadiths && entry.related_hadiths.length > 0)
-                    : quranData;
-                renderTimeline(filteredData);
-            });
         });
     </script>
 
