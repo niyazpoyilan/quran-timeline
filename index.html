@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Islamic Revelation Timeline</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Amiri&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Amiri&display=swap"
+        rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script> <!-- Fuzzy Search -->
     <style>
         /* General Page Styling */
@@ -32,7 +34,8 @@
             text-align: center;
         }
 
-        .filters select, .filters input {
+        .filters select,
+        .filters input {
             padding: 8px;
             margin: 5px;
             font-size: 1rem;
@@ -127,25 +130,22 @@
         }
 
         .hadith {
-            margin-bottom: 20px;
+            background: #f1f1f1;
             padding: 10px;
-            border-bottom: 1px solid #ccc;
+            border-left: 4px solid #4CAF50;
+            margin: 10px 0;
+            border-radius: 5px;
         }
     </style>
 </head>
+
 <body>
 
     <h1>Islamic Revelation Timeline</h1>
 
     <!-- Filters Section -->
     <div class="filters">
-        <select id="filterYear">
-            <option value="all">Show by Year</option>
-        </select>
-        <select id="filterSurah">
-            <option value="all">Show by Surah</option>
-        </select>
-        <input type="text" id="searchSurah" placeholder="Search Surah...">
+        <input type="checkbox" id="filterHadithOnly"> Show only Ayahs with Hadiths
     </div>
 
     <!-- Timeline -->
@@ -163,25 +163,23 @@
         document.addEventListener("DOMContentLoaded", function () {
             const timeline = document.getElementById("timeline");
             const eventDetails = document.getElementById("eventDetails");
+            const filterHadithOnly = document.getElementById("filterHadithOnly");
             let quranData = [];
             let hadithData = {};
 
-            // Load Quran data
-            fetch("quran_chronological.json")
+            // Load Hadith first, then load Quran data
+            fetch("hadith_connections.json")
+                .then(response => response.json())
+                .then(data => {
+                    hadithData = data; // Store Hadith data
+                    return fetch("quran_chronological.json");
+                })
                 .then(response => response.json())
                 .then(data => {
                     quranData = data;
                     renderTimeline(quranData);
                 })
-                .catch(error => console.error("Error loading Quran data:", error));
-
-            // Load Hadith data
-            fetch("hadith_connections.json")
-                .then(response => response.json())
-                .then(data => {
-                    hadithData = data; // Store Hadith data for linking
-                })
-                .catch(error => console.error("Error loading Hadith data:", error));
+                .catch(error => console.error("Error loading data:", error));
 
             function renderTimeline(filteredData) {
                 timeline.innerHTML = "";
@@ -216,7 +214,7 @@
             }
 
             function renderHadiths(hadithIDs) {
-                if (!hadithIDs || hadithIDs.length === 0) return "<p>No related Hadiths available.</p>";
+                if (!hadithIDs || hadithIDs.length === 0) return "<p><em>No related Hadiths available.</em></p>";
 
                 return hadithIDs.map(id => {
                     const hadith = hadithData[id];
@@ -229,8 +227,16 @@
                     ` : "";
                 }).join("");
             }
+
+            filterHadithOnly.addEventListener("change", () => {
+                const filteredData = filterHadithOnly.checked
+                    ? quranData.filter(entry => entry.related_hadiths && entry.related_hadiths.length > 0)
+                    : quranData;
+                renderTimeline(filteredData);
+            });
         });
     </script>
 
 </body>
+
 </html>
