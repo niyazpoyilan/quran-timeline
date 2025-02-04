@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Islamic Revelation Timeline</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Amiri&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script> <!-- Fuzzy Search -->
+    <style>
+        /* General Page Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+            text-align: center;
+        }
+
+        h1 {
+            padding: 20px;
+            background: #4CAF50;
+            color: white;
+            margin: 0;
+            font-size: 2rem;
+            text-transform: uppercase;
+        }
+
+        /* Filters Section */
+        .filters {
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .filters select, .filters input {
+            padding: 8px;
+            margin: 5px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        /* Timeline */
+        .timeline-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .timeline-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            white-space: nowrap;
+            border-top: 3px solid #4CAF50;
+            padding: 20px 0;
+            width: 80%;
+        }
+
+        .timeline-marker {
+            position: relative;
+            display: inline-block;
+            text-align: center;
+            margin: 0 15px;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .timeline-marker:hover {
+            transform: scale(1.2);
+        }
+
+        .marker-dot {
+            width: 15px;
+            height: 15px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .timeline-marker span {
+            display: block;
+            font-size: 14px;
+            margin-top: 5px;
+            color: #333;
+        }
+
+        /* Event Details */
+        .event-details {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .event-details.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .event-details h2 {
+            font-size: 1.8rem;
+            color: #4CAF50;
+        }
+
+        .event-details p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .arabic-text {
+            font-family: 'Amiri', serif;
+            font-size: 1.4em;
+            direction: rtl;
+            text-align: right;
+            color: #000;
+            margin-bottom: 10px;
+        }
+
+        .hadith {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Islamic Revelation Timeline</h1>
+
+    <!-- Filters Section -->
+    <div class="filters">
+        <select id="filterYear">
+            <option value="all">Show by Year</option>
+        </select>
+        <select id="filterSurah">
+            <option value="all">Show by Surah</option>
+        </select>
+        <input type="text" id="searchSurah" placeholder="Search Surah...">
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-wrapper">
+        <div class="timeline-container" id="timeline"></div>
+    </div>
+
+    <!-- Event Details -->
+    <div class="event-details" id="eventDetails">
+        <h2>Select a marker to view details</h2>
+        <p>Click on a marker to see Quranic revelations.</p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const timeline = document.getElementById("timeline");
+            const eventDetails = document.getElementById("eventDetails");
+            let quranData = [];
+            let hadithData = {};
+
+            // Load Quran data
+            fetch("quran_chronological.json")
+                .then(response => response.json())
+                .then(data => {
+                    quranData = data;
+                    renderTimeline(quranData);
+                })
+                .catch(error => console.error("Error loading Quran data:", error));
+
+            // Load Hadith data
+            fetch("hadith_connections.json")
+                .then(response => response.json())
+                .then(data => {
+                    hadithData = data; // Store Hadith data for linking
+                })
+                .catch(error => console.error("Error loading Hadith data:", error));
+
+            function renderTimeline(filteredData) {
+                timeline.innerHTML = "";
+                filteredData.forEach(entry => {
+                    const marker = document.createElement("div");
+                    marker.classList.add("timeline-marker");
+
+                    marker.innerHTML = `
+                        <div class="marker-dot" data-id="${entry.revelation_order}"></div>
+                        <span>${entry.revelation_year}</span>
+                    `;
+
+                    marker.addEventListener("click", function () {
+                        eventDetails.classList.remove("show");
+                        setTimeout(() => {
+                            eventDetails.innerHTML = `
+                                <h2>${entry.surah_english} (${entry.surah}) - Ayah ${entry.ayah}</h2>
+                                <p><strong>Year:</strong> ${entry.revelation_year}</p>
+                                <p><strong>Order:</strong> ${entry.revelation_order}</p>
+                                <p class="arabic-text">${entry.text_arabic}</p>
+                                <p>${entry.text_english}</p>
+                                <p><strong>Context:</strong> ${entry.context}</p>
+                                <h3>Related Hadiths</h3>
+                                <div id="hadithSection">${renderHadiths(entry.related_hadiths)}</div>
+                            `;
+                            eventDetails.classList.add("show");
+                        }, 200);
+                    });
+
+                    timeline.appendChild(marker);
+                });
+            }
+
+            function renderHadiths(hadithIDs) {
+                if (!hadithIDs || hadithIDs.length === 0) return "<p>No related Hadiths available.</p>";
+
+                return hadithIDs.map(id => {
+                    const hadith = hadithData[id];
+                    return hadith ? `
+                        <div class="hadith">
+                            <p><strong>Source:</strong> ${hadith.source} (${hadith.hadith_number})</p>
+                            <p><strong>Narrator:</strong> ${hadith.narrator}</p>
+                            <p>${hadith.text}</p>
+                        </div>
+                    ` : "";
+                }).join("");
+            }
+        });
+    </script>
+
+</body>
+</html>
